@@ -1,0 +1,1 @@
+import { Module } from '@nestjs/common';import { ArchitectureModelController } from './architecture-model.controller';import { ProjectsModule } from '../projects/projects.module';@Module({imports:[ProjectsModule],controllers:[ArchitectureModelController]})export class ArchitectureModelModule{}
