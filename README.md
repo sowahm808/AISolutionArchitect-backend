@@ -39,6 +39,27 @@ npm run prisma:seed
 npm run start:dev
 ```
 
+### Local URLs
+
+After `npm run start:dev` is running, the API is available locally at:
+
+- API base URL: `http://localhost:3000`
+- Swagger API docs: `http://localhost:3000/docs`
+
+Prisma uses the local PostgreSQL connection from `.env`:
+
+- Database URL: `postgresql://postgres:postgres@localhost:5432/aisa?schema=public`
+
+Useful Prisma commands:
+
+```bash
+npx prisma studio
+npx prisma migrate dev
+npx prisma generate
+```
+
+- Prisma Studio: `http://localhost:5555`
+
 The seeded demo login is:
 
 - Email: `demo@aisa.local`
