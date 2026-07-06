@@ -16,16 +16,14 @@ import { UsersController } from "./users.controller";
 import { ReviewController } from "./review.controller";
 import { OrganizationAliasController } from "./organization-alias.controller";
 import { AuditLogsController } from "./audit-logs.controller";
+import { createRedisConnectionOptions } from "./redis.config";
 @Module({
   controllers: [UsersController, ReviewController, OrganizationAliasController, AuditLogsController],
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     BullModule.forRoot({
-      connection: {
-        host: process.env.REDIS_HOST || "localhost",
-        port: Number(process.env.REDIS_PORT || 6379),
-      },
+      connection: createRedisConnectionOptions(),
     }),
     PrismaModule,
     AuditLogModule,

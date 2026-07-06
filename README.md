@@ -65,6 +65,13 @@ The seeded demo login is:
 - Email: `demo@aisa.local`
 - Password: `ChangeMe123!`
 
+
+## Render Deployment Notes
+
+Set `DATABASE_URL` to the current **Internal Database URL** from your Render PostgreSQL instance. A Prisma `P1000` error means the username/password in `DATABASE_URL` are not accepted by the database, so rotate or copy the database credentials again in Render.
+
+Set Redis with either `REDIS_URL` (for example, Render's internal Redis URL such as `redis://red-...:6379`) or separate `REDIS_HOST`/`REDIS_PORT` values. If using `REDIS_HOST`, provide only the hostname, not a full `redis://` URL.
+
 ## AI Provider
 
 Set `OPENAI_API_KEY` and `OPENAI_MODEL` to enable live model calls. Without an API key, the orchestration service uses deterministic, schema-valid fallback output so local development and tests remain repeatable.
