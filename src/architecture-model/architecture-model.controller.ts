@@ -35,8 +35,18 @@ export class ArchitectureModelController {
       where: { projectId: id },
       orderBy: { version: "desc" },
     });
+    const job = await this.db.generationJob.create({
+      data: {
+        id: randomUUID(),
+        projectId: id,
+        requestedBy: u.sub,
+        jobType: "ARCHITECTURE_MODEL",
+        status: "RUNNING",
+        startedAt: new Date(),
+      },
+    });
     const m = await this.ai.buildModel(p, answers);
-    return this.db.architectureModel.create({
+    await this.db.architectureModel.create({
       data: {
         id: randomUUID(),
         projectId: id,
@@ -57,6 +67,17 @@ export class ArchitectureModelController {
         risks: m.risks ?? [],
       },
     });
+    return this.db.generationJob.update({
+      where: { id: job.id },
+      data: { status: "COMPLETED", completedAt: new Date() },
+    });
+  }
+
+  @Get() async get(
+    @CurrentUser() u: AuthUser,
+    @Param("id") id: string,
+  ) {
+    return this.cur(u, id);
   }
   @Get("current") async cur(
     @CurrentUser() u: AuthUser,
