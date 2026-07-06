@@ -5,6 +5,8 @@ import {
   NotFoundException,
   Param,
   Patch,
+  Put,
+  Query,
   Post,
   UseGuards,
 } from "@nestjs/common";
@@ -85,10 +87,11 @@ export class ArtifactsController {
   @Get("artifacts") async list(
     @CurrentUser() u: AuthUser,
     @Param("id") id: string,
+    @Query("type") type?: string,
   ) {
     await this.projects.findOne(u, id);
     return this.db.artifact.findMany({
-      where: { projectId: id },
+      where: { projectId: id, ...(type ? { type: type as any } : {}) },
       orderBy: { updatedAt: "desc" },
     });
   }
@@ -113,6 +116,15 @@ export class ArtifactsController {
       where: { id: artifactId },
       data: d as any,
     });
+  }
+
+  @Put("artifacts/:artifactId") async put(
+    @CurrentUser() u: AuthUser,
+    @Param("id") id: string,
+    @Param("artifactId") artifactId: string,
+    @Body() d: PatchArtifactDto,
+  ) {
+    return this.patch(u, id, artifactId, d);
   }
   @Post("artifacts/:artifactId/regenerate") async regen(
     @CurrentUser() u: AuthUser,

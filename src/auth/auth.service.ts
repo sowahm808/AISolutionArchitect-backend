@@ -14,7 +14,7 @@ export class AuthService {
     const org = await this.db.organization.create({
       data: {
         id: randomUUID(),
-        name: dto.organizationName,
+        name: dto.organizationName || `${dto.name || dto.email} Organization`,
         industry: dto.industry,
       },
     });
@@ -22,7 +22,7 @@ export class AuthService {
       data: {
         id: randomUUID(),
         email: dto.email.toLowerCase(),
-        displayName: dto.displayName,
+        displayName: dto.displayName || dto.name || dto.email,
         passwordHash: await argon2.hash(dto.password),
         role: "ADMIN",
         organizationId: org.id,
@@ -90,6 +90,7 @@ export class AuthService {
       },
     });
     return {
+      token: accessToken,
       accessToken,
       refreshToken,
       user: {
