@@ -46,8 +46,12 @@ export class AuthService {
       const rows = await this.db.refreshToken.findMany({
         where: { userId: p.sub, revokedAt: null },
       });
-      if (!rows.some((r) => argon2.verify(r.tokenHash, token)))
-        throw new Error();
+      const tokenMatches = await Promise.all(
+        rows.map((r: { tokenHash: string }) =>
+          argon2.verify(r.tokenHash, token),
+        ),
+      );
+      if (!tokenMatches.some(Boolean)) throw new Error();
       const user = await this.db.user.findUniqueOrThrow({
         where: { id: p.sub },
       });
