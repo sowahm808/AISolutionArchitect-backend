@@ -1,20 +1,228 @@
-generator client { provider = "prisma-client-js" }
-datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+generator client {
+  provider = "prisma-client-js"
+}
 
-enum Role { ADMIN ENTERPRISE_ARCHITECT SOLUTION_ARCHITECT CLOUD_ARCHITECT REVIEWER STAKEHOLDER }
-enum ProjectStatus { DRAFT DISCOVERY_IN_PROGRESS MODEL_READY GENERATING ARTIFACTS_READY ARCHIVED }
-enum ArtifactType { EXECUTIVE_SUMMARY CURRENT_STATE_ASSESSMENT TARGET_ARCHITECTURE C4_CONTEXT_DIAGRAM C4_CONTAINER_DIAGRAM AZURE_ARCHITECTURE_DIAGRAM NETWORK_DIAGRAM ADR TERRAFORM BICEP KUBERNETES_MANIFEST HELM_CHART AZURE_DEVOPS_PIPELINE GITHUB_ACTIONS_PIPELINE SECURITY_REVIEW RISK_ASSESSMENT COST_ESTIMATE IMPLEMENTATION_ROADMAP EXECUTIVE_PRESENTATION }
-enum ArtifactStatus { DRAFT GENERATING READY FAILED }
-enum JobStatus { QUEUED RUNNING COMPLETED FAILED }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
-model User { id String @id @default(uuid()) email String @unique displayName String passwordHash String role Role @default(SOLUTION_ARCHITECT) organizationId String organization Organization @relation(fields:[organizationId], references:[id]) projects Project[] refreshTokens RefreshToken[] auditLogs AuditLog[] createdAt DateTime @default(now()) updatedAt DateTime @updatedAt }
-model RefreshToken { id String @id @default(uuid()) userId String user User @relation(fields:[userId], references:[id], onDelete:Cascade) tokenHash String revokedAt DateTime? expiresAt DateTime createdAt DateTime @default(now()) }
-model Organization { id String @id @default(uuid()) name String industry String? plan String @default("ENTERPRISE") users User[] projects Project[] auditLogs AuditLog[] createdAt DateTime @default(now()) updatedAt DateTime @updatedAt }
-model Project { id String @id @default(uuid()) organizationId String ownerId String name String description String? cloudProvider String? migrationType String? currentStateSummary String? targetStateSummary String? status ProjectStatus @default(DRAFT) organization Organization @relation(fields:[organizationId], references:[id]) owner User @relation(fields:[ownerId], references:[id]) architectureModels ArchitectureModel[] artifacts Artifact[] adrs Adr[] jobs GenerationJob[] discoveryAnswers DiscoveryAnswer[] createdAt DateTime @default(now()) updatedAt DateTime @updatedAt @@index([organizationId]) }
-model DiscoveryAnswer { id String @id @default(uuid()) projectId String project Project @relation(fields:[projectId], references:[id], onDelete:Cascade) question String answer String createdAt DateTime @default(now()) }
-model ArchitectureModel { id String @id @default(uuid()) projectId String project Project @relation(fields:[projectId], references:[id], onDelete:Cascade) version Int businessContext Json currentState Json targetState Json applications Json integrations Json dataStores Json infrastructure Json security Json deployment Json operations Json assumptions Json constraints Json decisions Json risks Json artifacts Artifact[] adrs Adr[] createdAt DateTime @default(now()) @@unique([projectId, version]) }
-model Artifact { id String @id @default(uuid()) projectId String architectureModelId String type ArtifactType title String format String content Json status ArtifactStatus @default(DRAFT) version Int @default(1) project Project @relation(fields:[projectId], references:[id], onDelete:Cascade) architectureModel ArchitectureModel @relation(fields:[architectureModelId], references:[id]) createdAt DateTime @default(now()) updatedAt DateTime @updatedAt @@index([projectId,type]) }
-model Adr { id String @id @default(uuid()) projectId String architectureModelId String number Int title String status String context String decision String alternatives Json consequences Json project Project @relation(fields:[projectId], references:[id], onDelete:Cascade) architectureModel ArchitectureModel @relation(fields:[architectureModelId], references:[id]) createdAt DateTime @default(now()) @@unique([projectId, number]) }
-model GenerationJob { id String @id @default(uuid()) projectId String requestedBy String jobType String status JobStatus @default(QUEUED) error String? startedAt DateTime? completedAt DateTime? project Project @relation(fields:[projectId], references:[id], onDelete:Cascade) }
-model AiRun { id String @id @default(uuid()) projectId String? promptType String promptInput Json generatedOutput Json? modelName String tokenUsage Json? status String error String? createdAt DateTime @default(now()) }
-model AuditLog { id String @id @default(uuid()) organizationId String userId String? action String entityType String entityId String? metadata Json? organization Organization @relation(fields:[organizationId], references:[id]) user User? @relation(fields:[userId], references:[id]) createdAt DateTime @default(now()) }
+enum Role {
+  ADMIN
+  ENTERPRISE_ARCHITECT
+  SOLUTION_ARCHITECT
+  CLOUD_ARCHITECT
+  REVIEWER
+  STAKEHOLDER
+}
+
+enum ProjectStatus {
+  DRAFT
+  DISCOVERY_IN_PROGRESS
+  MODEL_READY
+  GENERATING
+  ARTIFACTS_READY
+  ARCHIVED
+}
+
+enum ArtifactType {
+  EXECUTIVE_SUMMARY
+  CURRENT_STATE_ASSESSMENT
+  TARGET_ARCHITECTURE
+  C4_CONTEXT_DIAGRAM
+  C4_CONTAINER_DIAGRAM
+  AZURE_ARCHITECTURE_DIAGRAM
+  NETWORK_DIAGRAM
+  ADR
+  TERRAFORM
+  BICEP
+  KUBERNETES_MANIFEST
+  HELM_CHART
+  AZURE_DEVOPS_PIPELINE
+  GITHUB_ACTIONS_PIPELINE
+  SECURITY_REVIEW
+  RISK_ASSESSMENT
+  COST_ESTIMATE
+  IMPLEMENTATION_ROADMAP
+  EXECUTIVE_PRESENTATION
+}
+
+enum ArtifactStatus {
+  DRAFT
+  GENERATING
+  READY
+  FAILED
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id String @id @default(uuid())
+  email String @unique
+  displayName String
+  passwordHash String
+  role Role @default(SOLUTION_ARCHITECT)
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id])
+  projects Project[]
+  refreshTokens RefreshToken[]
+  auditLogs AuditLog[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RefreshToken {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String
+  revokedAt DateTime?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Organization {
+  id String @id @default(uuid())
+  name String
+  industry String?
+  plan String @default("ENTERPRISE")
+  users User[]
+  projects Project[]
+  auditLogs AuditLog[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id String @id @default(uuid())
+  organizationId String
+  ownerId String
+  name String
+  description String?
+  cloudProvider String?
+  migrationType String?
+  currentStateSummary String?
+  targetStateSummary String?
+  status ProjectStatus @default(DRAFT)
+  organization Organization @relation(fields: [organizationId], references: [id])
+  owner User @relation(fields: [ownerId], references: [id])
+  architectureModels ArchitectureModel[]
+  artifacts Artifact[]
+  adrs Adr[]
+  jobs GenerationJob[]
+  discoveryAnswers DiscoveryAnswer[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([organizationId])
+}
+
+model DiscoveryAnswer {
+  id String @id @default(uuid())
+  projectId String
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  question String
+  answer String
+  createdAt DateTime @default(now())
+}
+
+model ArchitectureModel {
+  id String @id @default(uuid())
+  projectId String
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version Int
+  businessContext Json
+  currentState Json
+  targetState Json
+  applications Json
+  integrations Json
+  dataStores Json
+  infrastructure Json
+  security Json
+  deployment Json
+  operations Json
+  assumptions Json
+  constraints Json
+  decisions Json
+  risks Json
+  artifacts Artifact[]
+  adrs Adr[]
+  createdAt DateTime @default(now())
+  @@unique([projectId, version])
+}
+
+model Artifact {
+  id String @id @default(uuid())
+  projectId String
+  architectureModelId String
+  type ArtifactType
+  title String
+  format String
+  content Json
+  status ArtifactStatus @default(DRAFT)
+  version Int @default(1)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  architectureModel ArchitectureModel @relation(fields: [architectureModelId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([projectId, type])
+}
+
+model Adr {
+  id String @id @default(uuid())
+  projectId String
+  architectureModelId String
+  number Int
+  title String
+  status String
+  context String
+  decision String
+  alternatives Json
+  consequences Json
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  architectureModel ArchitectureModel @relation(fields: [architectureModelId], references: [id])
+  createdAt DateTime @default(now())
+  @@unique([projectId, number])
+}
+
+model GenerationJob {
+  id String @id @default(uuid())
+  projectId String
+  requestedBy String
+  jobType String
+  status JobStatus @default(QUEUED)
+  error String?
+  startedAt DateTime?
+  completedAt DateTime?
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model AiRun {
+  id String @id @default(uuid())
+  projectId String?
+  promptType String
+  promptInput Json
+  generatedOutput Json?
+  modelName String
+  tokenUsage Json?
+  status String
+  error String?
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id String @id @default(uuid())
+  organizationId String
+  userId String?
+  action String
+  entityType String
+  entityId String?
+  metadata Json?
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}

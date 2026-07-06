@@ -1,1 +1,81 @@
-import { Controller,Get,NotFoundException,Param,Post,UseGuards } from '@nestjs/common';import { ApiBearerAuth,ApiTags } from '@nestjs/swagger';import { randomUUID } from 'crypto';import { JwtAuthGuard } from '../common/jwt-auth.guard';import { CurrentUser,AuthUser } from '../common/current-user.decorator';import { PrismaService } from '../prisma/prisma.service';import { ProjectsService } from '../projects/projects.service';import { AiOrchestrationService } from '../ai-orchestration/ai-orchestration.service';@ApiTags('Architecture model')@ApiBearerAuth()@UseGuards(JwtAuthGuard)@Controller('projects/:id/architecture-model')export class ArchitectureModelController{constructor(private db:PrismaService,private projects:ProjectsService,private ai:AiOrchestrationService){}@Post('generate')async gen(@CurrentUser()u:AuthUser,@Param('id')id:string){const p=await this.projects.findOne(u,id);const answers=await this.db.discoveryAnswer.findMany({where:{projectId:id}});const last=await this.db.architectureModel.findFirst({where:{projectId:id},orderBy:{version:'desc'}});const m=await this.ai.buildModel(p,answers);return this.db.architectureModel.create({data:{id:randomUUID(),projectId:id,version:(last?.version||0)+1,...m}})}@Get('current')async cur(@CurrentUser()u:AuthUser,@Param('id')id:string){await this.projects.findOne(u,id);const m=await this.db.architectureModel.findFirst({where:{projectId:id},orderBy:{version:'desc'}});if(!m)throw new NotFoundException('Architecture model not found');return m}@Get('versions')async versions(@CurrentUser()u:AuthUser,@Param('id')id:string){await this.projects.findOne(u,id);return this.db.architectureModel.findMany({where:{projectId:id},select:{id:true,version:true,createdAt:true},orderBy:{version:'desc'}})}@Get(':version')async version(@CurrentUser()u:AuthUser,@Param('id')id:string,@Param('version')v:string){await this.projects.findOne(u,id);return this.db.architectureModel.findUniqueOrThrow({where:{projectId_version:{projectId:id,version:Number(v)}}})}}
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { randomUUID } from "crypto";
+import { JwtAuthGuard } from "../common/jwt-auth.guard";
+import { CurrentUser, AuthUser } from "../common/current-user.decorator";
+import { PrismaService } from "../prisma/prisma.service";
+import { ProjectsService } from "../projects/projects.service";
+import { AiOrchestrationService } from "../ai-orchestration/ai-orchestration.service";
+@ApiTags("Architecture model")
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@Controller("projects/:id/architecture-model")
+export class ArchitectureModelController {
+  constructor(
+    private db: PrismaService,
+    private projects: ProjectsService,
+    private ai: AiOrchestrationService,
+  ) {}
+  @Post("generate") async gen(
+    @CurrentUser() u: AuthUser,
+    @Param("id") id: string,
+  ) {
+    const p = await this.projects.findOne(u, id);
+    const answers = await this.db.discoveryAnswer.findMany({
+      where: { projectId: id },
+    });
+    const last = await this.db.architectureModel.findFirst({
+      where: { projectId: id },
+      orderBy: { version: "desc" },
+    });
+    const m = await this.ai.buildModel(p, answers);
+    return this.db.architectureModel.create({
+      data: {
+        id: randomUUID(),
+        projectId: id,
+        version: (last?.version || 0) + 1,
+        ...m,
+      },
+    });
+  }
+  @Get("current") async cur(
+    @CurrentUser() u: AuthUser,
+    @Param("id") id: string,
+  ) {
+    await this.projects.findOne(u, id);
+    const m = await this.db.architectureModel.findFirst({
+      where: { projectId: id },
+      orderBy: { version: "desc" },
+    });
+    if (!m) throw new NotFoundException("Architecture model not found");
+    return m;
+  }
+  @Get("versions") async versions(
+    @CurrentUser() u: AuthUser,
+    @Param("id") id: string,
+  ) {
+    await this.projects.findOne(u, id);
+    return this.db.architectureModel.findMany({
+      where: { projectId: id },
+      select: { id: true, version: true, createdAt: true },
+      orderBy: { version: "desc" },
+    });
+  }
+  @Get(":version") async version(
+    @CurrentUser() u: AuthUser,
+    @Param("id") id: string,
+    @Param("version") v: string,
+  ) {
+    await this.projects.findOne(u, id);
+    return this.db.architectureModel.findUniqueOrThrow({
+      where: { projectId_version: { projectId: id, version: Number(v) } },
+    });
+  }
+}
