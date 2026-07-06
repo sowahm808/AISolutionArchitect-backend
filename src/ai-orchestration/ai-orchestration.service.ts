@@ -1,3 +1,171 @@
-import { Injectable,BadRequestException } from '@nestjs/common';import OpenAI from 'openai';import { z } from 'zod';import { PrismaService } from '../prisma/prisma.service';import { PROMPTS } from './prompts';import { randomUUID } from 'crypto';
-const ModelSchema=z.object({businessContext:z.any(),currentState:z.any(),targetState:z.any(),applications:z.any(),integrations:z.any(),dataStores:z.any(),infrastructure:z.any(),security:z.any(),deployment:z.any(),operations:z.any(),assumptions:z.any(),constraints:z.any(),decisions:z.any(),risks:z.any()});
-@Injectable()export class AiOrchestrationService{private client=process.env.OPENAI_API_KEY?new OpenAI({apiKey:process.env.OPENAI_API_KEY}):undefined;constructor(private db:PrismaService){}async discovery(project:any,answers:any[]){return this.run('DISCOVERY',{project,answers},z.object({questions:z.array(z.string()),assumptions:z.array(z.string())}),{questions:['What business capabilities are in scope?','What compliance constraints apply?','What target Azure regions and availability objectives are required?'],assumptions:['Migration targets Azure landing-zone patterns unless stated otherwise.']})}async buildModel(project:any,answers:any[]){const fallback={businessContext:{initiative:project.description||project.name},currentState:{summary:project.currentStateSummary},targetState:{summary:project.targetStateSummary,cloudProvider:project.cloudProvider},applications:[],integrations:[],dataStores:[],infrastructure:{cloudProvider:project.cloudProvider,networking:'hub-spoke'},security:{identity:'Entra ID',secrets:'Key Vault'},deployment:{strategy:'CI/CD with progressive environments'},operations:{observability:'centralized logs, metrics, traces'},assumptions:['Generated from submitted project data and discovery answers'],constraints:[],decisions:[{title:'Use canonical architecture model as artifact source'}],risks:[{title:'Incomplete discovery data',mitigation:'Review generated assumptions'}]};return this.run('ARCHITECTURE_MODEL',{project,answers},ModelSchema,fallback)}async artifact(type:string,model:any){const prompt= type.includes('TERRAFORM')?'TERRAFORM':type.includes('KUBERNETES')?'KUBERNETES':type.includes('PIPELINE')?'CICD':type.includes('SECURITY')?'SECURITY_REVIEW':type.includes('RISK')?'RISK_ASSESSMENT':type.includes('COST')?'COST_ESTIMATE':type.includes('PRESENTATION')?'EXECUTIVE_PRESENTATION':type.includes('ADR')?'ADR':'DIAGRAM';return this.run(prompt as keyof typeof PROMPTS,{architectureModel:model,type},z.any(),{format:'markdown',sourceArchitectureModelId:model.id,sections:[`Generated ${type} from canonical ArchitectureModel v${model.version}`],content:model})}private async run<T>(promptType:keyof typeof PROMPTS,input:any,schema:z.ZodType<T>,fallback:T):Promise<T>{let output:any=fallback,status='COMPLETED',error:string|undefined,usage:any={mode:'deterministic-fallback'};try{if(this.client){const r=await this.client.chat.completions.create({model:process.env.OPENAI_MODEL||'gpt-4o-mini',response_format:{type:'json_object'},messages:[{role:'system',content:PROMPTS[promptType]+' Return valid JSON only.'},{role:'user',content:JSON.stringify(input)}]});output=JSON.parse(r.choices[0]?.message.content||'{}');usage=r.usage}output=schema.parse(output)}catch(e:any){status='FAILED';error=e.message;try{output=schema.parse(fallback)}catch{throw new BadRequestException('AI output validation failed')}}await this.db.aiRun.create({data:{id:randomUUID(),projectId:input.project?.id||input.architectureModel?.projectId,promptType,promptInput:input,generatedOutput:output as any,modelName:process.env.OPENAI_MODEL||'deterministic-fallback',tokenUsage:usage,status,error}});return output}}
+import { Injectable, BadRequestException } from "@nestjs/common";
+import OpenAI from "openai";
+import { z } from "zod";
+import { PrismaService } from "../prisma/prisma.service";
+import { PROMPTS } from "./prompts";
+import { randomUUID } from "crypto";
+const ModelSchema = z.object({
+  businessContext: z.any(),
+  currentState: z.any(),
+  targetState: z.any(),
+  applications: z.any(),
+  integrations: z.any(),
+  dataStores: z.any(),
+  infrastructure: z.any(),
+  security: z.any(),
+  deployment: z.any(),
+  operations: z.any(),
+  assumptions: z.any(),
+  constraints: z.any(),
+  decisions: z.any(),
+  risks: z.any(),
+});
+@Injectable()
+export class AiOrchestrationService {
+  private client = process.env.OPENAI_API_KEY
+    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    : undefined;
+  constructor(private db: PrismaService) {}
+  async discovery(project: any, answers: any[]) {
+    return this.run(
+      "DISCOVERY",
+      { project, answers },
+      z.object({
+        questions: z.array(z.string()),
+        assumptions: z.array(z.string()),
+      }),
+      {
+        questions: [
+          "What business capabilities are in scope?",
+          "What compliance constraints apply?",
+          "What target Azure regions and availability objectives are required?",
+        ],
+        assumptions: [
+          "Migration targets Azure landing-zone patterns unless stated otherwise.",
+        ],
+      },
+    );
+  }
+  async buildModel(project: any, answers: any[]) {
+    const fallback = {
+      businessContext: { initiative: project.description || project.name },
+      currentState: { summary: project.currentStateSummary },
+      targetState: {
+        summary: project.targetStateSummary,
+        cloudProvider: project.cloudProvider,
+      },
+      applications: [],
+      integrations: [],
+      dataStores: [],
+      infrastructure: {
+        cloudProvider: project.cloudProvider,
+        networking: "hub-spoke",
+      },
+      security: { identity: "Entra ID", secrets: "Key Vault" },
+      deployment: { strategy: "CI/CD with progressive environments" },
+      operations: { observability: "centralized logs, metrics, traces" },
+      assumptions: [
+        "Generated from submitted project data and discovery answers",
+      ],
+      constraints: [],
+      decisions: [
+        { title: "Use canonical architecture model as artifact source" },
+      ],
+      risks: [
+        {
+          title: "Incomplete discovery data",
+          mitigation: "Review generated assumptions",
+        },
+      ],
+    };
+    return this.run(
+      "ARCHITECTURE_MODEL",
+      { project, answers },
+      ModelSchema,
+      fallback,
+    );
+  }
+  async artifact(type: string, model: any) {
+    const prompt = type.includes("TERRAFORM")
+      ? "TERRAFORM"
+      : type.includes("KUBERNETES")
+        ? "KUBERNETES"
+        : type.includes("PIPELINE")
+          ? "CICD"
+          : type.includes("SECURITY")
+            ? "SECURITY_REVIEW"
+            : type.includes("RISK")
+              ? "RISK_ASSESSMENT"
+              : type.includes("COST")
+                ? "COST_ESTIMATE"
+                : type.includes("PRESENTATION")
+                  ? "EXECUTIVE_PRESENTATION"
+                  : type.includes("ADR")
+                    ? "ADR"
+                    : "DIAGRAM";
+    return this.run(
+      prompt as keyof typeof PROMPTS,
+      { architectureModel: model, type },
+      z.any(),
+      {
+        format: "markdown",
+        sourceArchitectureModelId: model.id,
+        sections: [
+          `Generated ${type} from canonical ArchitectureModel v${model.version}`,
+        ],
+        content: model,
+      },
+    );
+  }
+  private async run<T>(
+    promptType: keyof typeof PROMPTS,
+    input: any,
+    schema: z.ZodType<T>,
+    fallback: T,
+  ): Promise<T> {
+    let output: any = fallback,
+      status = "COMPLETED",
+      error: string | undefined,
+      usage: any = { mode: "deterministic-fallback" };
+    try {
+      if (this.client) {
+        const r = await this.client.chat.completions.create({
+          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content: PROMPTS[promptType] + " Return valid JSON only.",
+            },
+            { role: "user", content: JSON.stringify(input) },
+          ],
+        });
+        output = JSON.parse(r.choices[0]?.message.content || "{}");
+        usage = r.usage;
+      }
+      output = schema.parse(output);
+    } catch (e: any) {
+      status = "FAILED";
+      error = e.message;
+      try {
+        output = schema.parse(fallback);
+      } catch {
+        throw new BadRequestException("AI output validation failed");
+      }
+    }
+    await this.db.aiRun.create({
+      data: {
+        id: randomUUID(),
+        projectId: input.project?.id || input.architectureModel?.projectId,
+        promptType,
+        promptInput: input,
+        generatedOutput: output as any,
+        modelName: process.env.OPENAI_MODEL || "deterministic-fallback",
+        tokenUsage: usage,
+        status,
+        error,
+      },
+    });
+    return output;
+  }
+}

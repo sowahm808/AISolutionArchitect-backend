@@ -1,1 +1,19 @@
-import { CallHandler,ExecutionContext,Injectable,NestInterceptor,Logger } from '@nestjs/common';import { tap } from 'rxjs';@Injectable()export class RequestLoggingInterceptor implements NestInterceptor{private l=new Logger('HTTP');intercept(ctx:ExecutionContext,next:CallHandler){const r=ctx.switchToHttp().getRequest();const s=Date.now();return next.handle().pipe(tap(()=>this.l.log(`${r.method} ${r.url} ${Date.now()-s}ms`)))}}
+import {
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  NestInterceptor,
+  Logger,
+} from "@nestjs/common";
+import { tap } from "rxjs";
+@Injectable()
+export class RequestLoggingInterceptor implements NestInterceptor {
+  private l = new Logger("HTTP");
+  intercept(ctx: ExecutionContext, next: CallHandler) {
+    const r = ctx.switchToHttp().getRequest();
+    const s = Date.now();
+    return next
+      .handle()
+      .pipe(tap(() => this.l.log(`${r.method} ${r.url} ${Date.now() - s}ms`)));
+  }
+}

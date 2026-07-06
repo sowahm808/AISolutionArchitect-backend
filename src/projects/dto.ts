@@ -1,1 +1,10 @@
-import { IsOptional,IsString } from 'class-validator';export class CreateProjectDto{@IsString()name:string;@IsOptional()@IsString()description?:string;@IsOptional()@IsString()cloudProvider?:string;@IsOptional()@IsString()migrationType?:string;@IsOptional()@IsString()currentStateSummary?:string;@IsOptional()@IsString()targetStateSummary?:string}export class UpdateProjectDto extends CreateProjectDto{}
+import { IsOptional, IsString } from "class-validator";
+export class CreateProjectDto {
+  @IsString() name: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsString() cloudProvider?: string;
+  @IsOptional() @IsString() migrationType?: string;
+  @IsOptional() @IsString() currentStateSummary?: string;
+  @IsOptional() @IsString() targetStateSummary?: string;
+}
+export class UpdateProjectDto extends CreateProjectDto {}
