@@ -1,4 +1,4 @@
-import { Controller, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Param, Post, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../common/jwt-auth.guard";
 import { CurrentUser, AuthUser } from "../common/current-user.decorator";
@@ -7,13 +7,25 @@ import { PrismaService } from "../prisma/prisma.service";
 @ApiTags("Export")
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller("projects/:id/export")
+@Controller("projects/:id")
 export class ExportController {
   constructor(
     private projects: ProjectsService,
     private db: PrismaService,
   ) {}
-  @Post(":format") async export(
+
+  @Post("exports") async exportFromBody(
+    @CurrentUser() u: AuthUser,
+    @Param("id") id: string,
+    @Body() body: { format?: string },
+  ) {
+    const result = await this.export(u, id, body.format || "zip");
+    return {
+      ...result,
+      url: `/projects/${id}/export/${body.format || "zip"}`,
+    };
+  }
+  @Post("export/:format") async export(
     @CurrentUser() u: AuthUser,
     @Param("id") id: string,
     @Param("format") format: string,

@@ -12,7 +12,12 @@ import { ArtifactsModule } from "./artifacts/artifacts.module";
 import { AiOrchestrationModule } from "./ai-orchestration/ai-orchestration.module";
 import { AuditLogModule } from "./audit-log/audit-log.module";
 import { ExportModule } from "./export/export.module";
+import { UsersController } from "./users.controller";
+import { ReviewController } from "./review.controller";
+import { OrganizationAliasController } from "./organization-alias.controller";
+import { AuditLogsController } from "./audit-logs.controller";
 @Module({
+  controllers: [UsersController, ReviewController, OrganizationAliasController, AuditLogsController],
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
