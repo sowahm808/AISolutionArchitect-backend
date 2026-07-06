@@ -70,6 +70,15 @@ The seeded demo login is:
 
 Set `DATABASE_URL` to the current **Internal Database URL** from your Render PostgreSQL instance. A Prisma `P1000` error means the username/password in `DATABASE_URL` are not accepted by the database, so rotate or copy the database credentials again in Render.
 
+To fix a Render `P1000` startup failure:
+
+1. Open the Render PostgreSQL service that your backend should use.
+2. Copy the latest **Internal Database URL**. Do not use an old URL from a previous database or a manually typed username/password.
+3. Open the backend web service in Render, update the `DATABASE_URL` environment variable with that exact value, and save/redeploy.
+4. If the URL still fails, rotate the PostgreSQL password in Render, copy the newly generated **Internal Database URL**, update `DATABASE_URL` again, and redeploy.
+
+The application logs a short, sanitized `DATABASE_URL` remediation message for Prisma `P1000` errors so credentials are not printed in deploy logs.
+
 Set Redis with either `REDIS_URL` (for example, Render's internal Redis URL such as `redis://red-...:6379`) or separate `REDIS_HOST`/`REDIS_PORT` values. If using `REDIS_HOST`, provide only the hostname, not a full `redis://` URL.
 
 ## AI Provider
