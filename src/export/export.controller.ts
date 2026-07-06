@@ -26,7 +26,7 @@ export class ExportController {
       format,
       status: "READY_FOR_EXPORT",
       artifactCount: artifacts.length,
-      manifest: artifacts.map((a) => ({
+      manifest: artifacts.map((a: (typeof artifacts)[number]) => ({
         id: a.id,
         type: a.type,
         title: a.title,
