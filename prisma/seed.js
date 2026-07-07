@@ -1,7 +1,8 @@
-import { PrismaClient } from "@prisma/client";
-import * as argon2 from "argon2";
-import { randomUUID } from "crypto";
+const { PrismaClient } = require("@prisma/client");
+const argon2 = require("argon2");
+
 const db = new PrismaClient();
+
 async function main() {
   const org = await db.organization.upsert({
     where: { id: "demo-org" },
@@ -13,6 +14,7 @@ async function main() {
       plan: "ENTERPRISE",
     },
   });
+
   const user = await db.user.upsert({
     where: { email: "demo@aisa.local" },
     update: {},
@@ -25,6 +27,7 @@ async function main() {
       organizationId: org.id,
     },
   });
+
   await db.project.upsert({
     where: { id: "demo-project" },
     update: {},
@@ -42,4 +45,10 @@ async function main() {
     },
   });
 }
-main().finally(() => db.$disconnect());
+
+main()
+  .catch((error) => {
+    console.error("Database seed failed", error);
+    process.exitCode = 1;
+  })
+  .finally(() => db.$disconnect());
