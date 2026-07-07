@@ -56,6 +56,8 @@ Useful Prisma commands:
 npx prisma studio
 npx prisma migrate dev
 npx prisma generate
+npm run prisma:deploy
+npm run prisma:seed
 ```
 
 - Prisma Studio: `http://localhost:5555`
@@ -80,6 +82,23 @@ To fix a Render `P1000` startup failure:
 The application logs a short, sanitized `DATABASE_URL` remediation message for Prisma `P1000` errors so credentials are not printed in deploy logs.
 
 Set Redis with either `REDIS_URL` (for example, Render's internal Redis URL such as `redis://red-...:6379`) or separate `REDIS_HOST`/`REDIS_PORT` values. If using `REDIS_HOST`, provide only the hostname, not a full `redis://` URL.
+
+### Seeding on Render
+
+Yes. The seed script now runs with production dependencies, so it can be executed from a Render Shell or one-off job after migrations have been applied.
+
+Use this command in the Render backend service shell:
+
+```bash
+npm run prisma:deploy && npm run prisma:seed
+```
+
+Notes:
+
+- `DATABASE_URL` must be set to the Render PostgreSQL **Internal Database URL** before running the command.
+- `npm run prisma:deploy` applies pending production migrations without creating new migration files.
+- `npm run prisma:seed` is idempotent for the demo organization, user, and project because it uses Prisma `upsert` calls.
+- The seeded demo login is still `demo@aisa.local` / `ChangeMe123!`; change or remove this user before using a public production environment.
 
 ## AI Provider
 
