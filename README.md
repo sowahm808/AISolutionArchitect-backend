@@ -12,20 +12,20 @@ Production-oriented NestJS backend foundation for **AI Solution Architect**, an 
 - AI orchestration abstraction with prompt catalog, JSON output, validation, and auditable AI run records.
 - Prisma/PostgreSQL schema and initial migration.
 - Redis/BullMQ queue registration for background artifact generation.
-- Swagger documentation at `/docs`.
+- Swagger documentation at `/api/docs`.
 - Helmet, CORS from environment variables, validation pipes, throttling, request logging, and centralized error filtering.
 - Docker and docker-compose for local PostgreSQL/Redis/API development.
 
 ## Main API Groups
 
-- `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me`
-- `GET/PATCH /organizations/current`
-- `POST/GET /projects`, `GET/PATCH/DELETE /projects/:id`
-- `POST /projects/:id/discovery/start`, `POST /projects/:id/discovery/answer`, `GET /projects/:id/discovery/questions`, `POST /projects/:id/discovery/complete`
-- `POST /projects/:id/architecture-model/generate`, `GET /projects/:id/architecture-model/current`, `GET /projects/:id/architecture-model/versions`, `GET /projects/:id/architecture-model/:version`
-- `POST /projects/:id/artifacts/generate`, `GET /projects/:id/artifacts`, `GET/PATCH /projects/:id/artifacts/:artifactId`, `POST /projects/:id/artifacts/:artifactId/regenerate`
-- `POST /projects/:id/generate/{diagrams|adrs|terraform|kubernetes|cicd|security-review|risk-assessment|cost-estimate|executive-presentation}`
-- `POST /projects/:id/export/{zip|pdf|docx|pptx}`
+- `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `GET /api/auth/me`
+- `GET/PATCH /api/organizations/current`
+- `POST/GET /api/projects`, `GET/PATCH/DELETE /api/projects/:id`
+- `POST /api/projects/:id/discovery/start`, `POST /api/projects/:id/discovery/answer`, `GET /api/projects/:id/discovery/questions`, `POST /api/projects/:id/discovery/complete`
+- `POST /api/projects/:id/architecture-model/generate`, `GET /api/projects/:id/architecture-model/current`, `GET /api/projects/:id/architecture-model/versions`, `GET /api/projects/:id/architecture-model/:version`
+- `POST /api/projects/:id/artifacts/generate`, `GET /api/projects/:id/artifacts`, `GET/PATCH /api/projects/:id/artifacts/:artifactId`, `POST /api/projects/:id/artifacts/:artifactId/regenerate`
+- `POST /api/projects/:id/generate/{diagrams|adrs|terraform|kubernetes|cicd|security-review|risk-assessment|cost-estimate|executive-presentation}`
+- `POST /api/projects/:id/export/{zip|pdf|docx|pptx}`
 
 ## Local Setup
 
@@ -43,8 +43,8 @@ npm run start:dev
 
 After `npm run start:dev` is running, the API is available locally at:
 
-- API base URL: `http://localhost:3000`
-- Swagger API docs: `http://localhost:3000/docs`
+- API base URL: `http://localhost:3000/api`
+- Swagger API docs: `http://localhost:3000/api/docs`
 
 Prisma uses the local PostgreSQL connection from `.env`:
 

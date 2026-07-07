@@ -30,6 +30,8 @@ async function bootstrap() {
 
   app.use(helmet());
 
+  app.setGlobalPrefix("api");
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -47,7 +49,7 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
 
-  SwaggerModule.setup("docs", app, SwaggerModule.createDocument(app, config));
+  SwaggerModule.setup("api/docs", app, SwaggerModule.createDocument(app, config));
 
   await app.listen(process.env.PORT || 3000);
 }

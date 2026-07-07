@@ -12,5 +12,5 @@ describe("Auth e2e", () => {
   });
   afterAll(() => app.close());
   it("exposes docs and validates auth", () =>
-    request(app.getHttpServer()).get("/auth/me").expect(401));
+    request(app.getHttpServer()).get("/api/auth/me").expect(401));
 });
