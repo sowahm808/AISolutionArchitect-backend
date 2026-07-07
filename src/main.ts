@@ -5,19 +5,15 @@ import helmet from "helmet";
 import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./common/http-exception.filter";
 import { RequestLoggingInterceptor } from "./common/request-logging.interceptor";
+import { getAllowedOrigins, isCorsOriginAllowed } from "./cors.config";
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  const allowedOrigins = (process.env.CORS_ORIGINS ?? "")
-    .split(",")
-    .map(origin => origin.trim())
-    .filter(Boolean);
+  const allowedOrigins = getAllowedOrigins();
 
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
+      if (isCorsOriginAllowed(origin, allowedOrigins)) {
         return callback(null, true);
       }
 
