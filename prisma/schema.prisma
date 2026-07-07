@@ -105,7 +105,16 @@ model Project {
   name String
   description String?
   cloudProvider String?
+  company String?
+  industry String?
   migrationType String?
+  businessProblem String?
+  currentArchitecture String?
+  targetGoal String?
+  compliance String?
+  budget String?
+  timeline String?
+  notes String?
   currentStateSummary String?
   targetStateSummary String?
   status ProjectStatus @default(DRAFT)
