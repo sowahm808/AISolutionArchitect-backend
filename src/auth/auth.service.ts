@@ -46,7 +46,11 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     return this.issue(user);
   }
-  async refresh(token: string) {
+  async refresh(token: string | undefined) {
+    if (!token) {
+      throw new UnauthorizedException("Invalid refresh token");
+    }
+
     try {
       const p = await this.jwt.verifyAsync(token, {
         secret: process.env.JWT_REFRESH_SECRET || "dev-refresh-secret",
