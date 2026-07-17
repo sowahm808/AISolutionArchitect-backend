@@ -1,9 +1,10 @@
-import { Injectable, BadRequestException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import OpenAI from "openai";
 import { z } from "zod";
 import { PrismaService } from "../prisma/prisma.service";
 import { PROMPTS } from "./prompts";
 import { randomUUID } from "crypto";
+
 const ModelSchema = z.object({
   businessContext: z.any(),
   currentState: z.any(),
@@ -20,12 +21,18 @@ const ModelSchema = z.object({
   decisions: z.any(),
   risks: z.any(),
 });
+
+type RunStatus = "COMPLETED" | "FAILED";
+
 @Injectable()
 export class AiOrchestrationService {
-  private client = process.env.OPENAI_API_KEY
-    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-    : undefined;
+  private readonly logger = new Logger(AiOrchestrationService.name);
+  private readonly apiKey = process.env.OPENAI_API_KEY?.trim();
+  private readonly model = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+  private client = this.apiKey ? new OpenAI({ apiKey: this.apiKey }) : undefined;
+
   constructor(private db: PrismaService) {}
+
   async discovery(project: any, answers: any[]) {
     return this.run(
       "DISCOVERY",
@@ -46,6 +53,7 @@ export class AiOrchestrationService {
       },
     );
   }
+
   async buildModel(project: any, answers: any[]) {
     const fallback = {
       businessContext: { initiative: project.description || project.name },
@@ -85,6 +93,7 @@ export class AiOrchestrationService {
       fallback,
     );
   }
+
   async artifact(type: string, model: any) {
     const prompt = type.includes("TERRAFORM")
       ? "TERRAFORM"
@@ -117,55 +126,111 @@ export class AiOrchestrationService {
       },
     );
   }
+
   private async run<T>(
     promptType: keyof typeof PROMPTS,
     input: any,
     schema: z.ZodType<T>,
     fallback: T,
   ): Promise<T> {
-    let output: any = fallback,
-      status = "COMPLETED",
-      error: string | undefined,
-      usage: any = { mode: "deterministic-fallback" };
+    let output: T;
+    let status: RunStatus = "COMPLETED";
+    let error: string | undefined;
+    let usage: any = { mode: "deterministic-fallback" };
+    let modelName = "deterministic-fallback";
+
     try {
-      if (this.client) {
-        const r = await this.client.chat.completions.create({
-          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-          response_format: { type: "json_object" },
-          messages: [
-            {
-              role: "system",
-              content: PROMPTS[promptType] + " Return valid JSON only.",
-            },
-            { role: "user", content: JSON.stringify(input) },
-          ],
-        });
-        output = JSON.parse(r.choices[0]?.message.content || "{}");
-        usage = r.usage;
+      if (!this.client) {
+        output = schema.parse(fallback);
+      } else {
+        const content = await this.createJsonCompletion(promptType, input);
+        output = schema.parse(this.parseJsonContent(content));
+        usage = content.usage;
+        modelName = this.model;
       }
-      output = schema.parse(output);
     } catch (e: any) {
       status = "FAILED";
       error = e.message;
-      try {
-        output = schema.parse(fallback);
-      } catch {
-        throw new BadRequestException("AI output validation failed");
-      }
+      this.logger.error(`AI ${promptType} failed: ${error}`);
+      await this.recordRun(
+        input,
+        promptType,
+        fallback as any,
+        modelName,
+        usage,
+        status,
+        error,
+      );
+      throw new BadRequestException(
+        `AI generation failed for ${promptType}: ${error}`,
+      );
     }
+
+    await this.recordRun(
+      input,
+      promptType,
+      output as any,
+      modelName,
+      usage,
+      status,
+      error,
+    );
+    return output;
+  }
+
+  private async createJsonCompletion(
+    promptType: keyof typeof PROMPTS,
+    input: any,
+  ) {
+    const response = await this.client!.chat.completions.create({
+      model: this.model,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: PROMPTS[promptType] + " Return valid JSON only.",
+        },
+        { role: "user", content: JSON.stringify(input) },
+      ],
+    });
+    return {
+      text: response.choices[0]?.message.content,
+      usage: response.usage ?? { mode: "openai", model: this.model },
+    };
+  }
+
+  private parseJsonContent(content: { text?: string | null }) {
+    if (!content.text) {
+      throw new Error("OpenAI returned an empty response");
+    }
+    try {
+      return JSON.parse(content.text);
+    } catch (e: any) {
+      throw new Error(`OpenAI returned invalid JSON: ${e.message}`);
+    }
+  }
+
+  private async recordRun(
+    input: any,
+    promptType: keyof typeof PROMPTS,
+    output: any,
+    modelName: string,
+    usage: any,
+    status: RunStatus,
+    error?: string,
+  ) {
     await this.db.aiRun.create({
       data: {
         id: randomUUID(),
         projectId: input.project?.id || input.architectureModel?.projectId,
         promptType,
         promptInput: input,
-        generatedOutput: output as any,
-        modelName: process.env.OPENAI_MODEL || "deterministic-fallback",
+        generatedOutput: output,
+        modelName,
         tokenUsage: usage,
         status,
         error,
       },
     });
-    return output;
   }
 }
