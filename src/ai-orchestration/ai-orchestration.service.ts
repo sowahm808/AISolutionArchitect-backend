@@ -5,6 +5,27 @@ import { PrismaService } from "../prisma/prisma.service";
 import { PROMPTS } from "./prompts";
 import { randomUUID } from "crypto";
 
+function normalizeOpenAiApiKey(value: string | undefined) {
+  const apiKey = value?.trim().replace(/^([\"'])(.*)\1$/, "$2");
+
+  if (!apiKey || /^OPENAI_/i.test(apiKey)) {
+    return undefined;
+  }
+
+  return apiKey;
+}
+
+function sanitizeAiError(error: unknown) {
+  if (error instanceof Error) {
+    return error.message.replace(
+      /Incorrect API key provided: [^\s.]+/g,
+      "Incorrect API key provided",
+    );
+  }
+
+  return String(error);
+}
+
 const ModelSchema = z.object({
   businessContext: z.any(),
   currentState: z.any(),
@@ -27,7 +48,7 @@ type RunStatus = "COMPLETED" | "FAILED";
 @Injectable()
 export class AiOrchestrationService {
   private readonly logger = new Logger(AiOrchestrationService.name);
-  private readonly apiKey = process.env.OPENAI_API_KEY?.trim();
+  private readonly apiKey = normalizeOpenAiApiKey(process.env.OPENAI_API_KEY);
   private readonly model = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
   private client = this.apiKey ? new OpenAI({ apiKey: this.apiKey }) : undefined;
 
@@ -150,7 +171,7 @@ export class AiOrchestrationService {
       }
     } catch (e: any) {
       status = "FAILED";
-      error = e.message;
+      error = sanitizeAiError(e);
       this.logger.error(`AI ${promptType} failed: ${error}`);
       await this.recordRun(
         input,
