@@ -34,6 +34,29 @@ describe("AiOrchestrationService", () => {
     restoreEnv("OPENAI_API_KEY", previousKey);
   });
 
+  it("treats copied environment variable names as missing OpenAI keys", async () => {
+    const previousKey = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = 'OPENAI_API_KEY="not-a-real-key"';
+    const db: any = { aiRun: { create: jest.fn() } };
+    const svc = new AiOrchestrationService(db);
+
+    const model = await svc.buildModel(
+      { id: "p1", name: "Migrate", cloudProvider: "Azure" },
+      [],
+    );
+
+    expect(model.decisions[0].title).toContain("canonical architecture model");
+    expect(db.aiRun.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          modelName: "deterministic-fallback",
+          status: "COMPLETED",
+        }),
+      }),
+    );
+    restoreEnv("OPENAI_API_KEY", previousKey);
+  });
+
   it("surfaces OpenAI failures instead of silently returning fallback content", async () => {
     const previousKey = process.env.OPENAI_API_KEY;
     process.env.OPENAI_API_KEY = "test-key";
@@ -42,7 +65,13 @@ describe("AiOrchestrationService", () => {
     svc.client = {
       chat: {
         completions: {
-          create: jest.fn().mockRejectedValue(new Error("invalid API key")),
+          create: jest
+            .fn()
+            .mockRejectedValue(
+              new Error(
+                '401 Incorrect API key provided: OPENAI_API_KEY="secret". You can find your API key at https://platform.openai.com/account/api-keys.',
+              ),
+            ),
         },
       },
     };
@@ -54,7 +83,8 @@ describe("AiOrchestrationService", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           status: "FAILED",
-          error: "invalid API key",
+          error:
+            "401 Incorrect API key provided. You can find your API key at https://platform.openai.com/account/api-keys.",
         }),
       }),
     );
