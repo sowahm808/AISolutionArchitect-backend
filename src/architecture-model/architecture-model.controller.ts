@@ -45,8 +45,12 @@ export class ArchitectureModelController {
         startedAt: new Date(),
       },
     });
+    await this.db.project.update({
+      where: { id },
+      data: { status: "GENERATING" },
+    });
     const m = await this.ai.buildModel(p, answers);
-    await this.db.architectureModel.create({
+    const model = await this.db.architectureModel.create({
       data: {
         id: randomUUID(),
         projectId: id,
@@ -67,10 +71,15 @@ export class ArchitectureModelController {
         risks: m.risks ?? [],
       },
     });
-    return this.db.generationJob.update({
+    const completedJob = await this.db.generationJob.update({
       where: { id: job.id },
       data: { status: "COMPLETED", completedAt: new Date() },
     });
+    await this.db.project.update({
+      where: { id },
+      data: { status: "MODEL_READY" },
+    });
+    return { ...completedJob, architectureModel: model };
   }
 
   @Get() async get(

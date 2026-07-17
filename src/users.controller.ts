@@ -4,6 +4,15 @@ import { JwtAuthGuard } from "./common/jwt-auth.guard";
 import { CurrentUser, AuthUser } from "./common/current-user.decorator";
 import { PrismaService } from "./prisma/prisma.service";
 
+const APP_ROLE_BY_DB_ROLE: Record<string, string> = {
+  ADMIN: "ADMIN",
+  ENTERPRISE_ARCHITECT: "ARCHITECT",
+  SOLUTION_ARCHITECT: "ARCHITECT",
+  CLOUD_ARCHITECT: "ARCHITECT",
+  REVIEWER: "SECURITY",
+  STAKEHOLDER: "VIEWER",
+};
+
 @ApiTags("Users")
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -12,8 +21,8 @@ export class UsersController {
   constructor(private db: PrismaService) {}
 
   @Get()
-  list(@CurrentUser() u: AuthUser) {
-    return this.db.user.findMany({
+  async list(@CurrentUser() u: AuthUser) {
+    const users = await this.db.user.findMany({
       where: { organizationId: u.organizationId },
       select: {
         id: true,
@@ -26,5 +35,10 @@ export class UsersController {
       },
       orderBy: { displayName: "asc" },
     });
+    return users.map((user) => ({
+      ...user,
+      name: user.displayName,
+      role: APP_ROLE_BY_DB_ROLE[user.role] ?? "VIEWER",
+    }));
   }
 }

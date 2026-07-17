@@ -14,6 +14,20 @@ class AnswerDto {
 class AnswersDto {
   @IsArray() answers: AnswerDto[];
 }
+function toDiscoveryQuestions(result: {
+  questions?: string[];
+  assumptions?: string[];
+}) {
+  return (result.questions ?? []).map((question, index) => ({
+    id: `question-${index + 1}`,
+    question,
+    text: question,
+    prompt: question,
+    category: "Discovery",
+    required: true,
+    assumptions: result.assumptions ?? [],
+  }));
+}
 @ApiTags("Discovery")
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -53,7 +67,8 @@ export class DiscoveryController {
     const answers = await this.db.discoveryAnswer.findMany({
       where: { projectId: id },
     });
-    return this.ai.discovery(p, answers);
+    const result = await this.ai.discovery(p, answers);
+    return toDiscoveryQuestions(result);
   }
 
   @Put("answers") async saveDraft(

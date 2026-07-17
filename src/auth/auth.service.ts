@@ -4,6 +4,14 @@ import * as argon2 from "argon2";
 import { randomUUID } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { RegisterDto, LoginDto } from "./dto";
+const APP_ROLE_BY_DB_ROLE: Record<string, string> = {
+  ADMIN: "ADMIN",
+  ENTERPRISE_ARCHITECT: "ARCHITECT",
+  SOLUTION_ARCHITECT: "ARCHITECT",
+  CLOUD_ARCHITECT: "ARCHITECT",
+  REVIEWER: "SECURITY",
+  STAKEHOLDER: "VIEWER",
+};
 @Injectable()
 export class AuthService {
   constructor(
@@ -64,7 +72,20 @@ export class AuthService {
     const { passwordHash, ...u } = await this.db.user.findUniqueOrThrow({
       where: { id },
     });
-    return u;
+    return this.toClientUser(u);
+  }
+  private toClientUser(user: any) {
+    const role = APP_ROLE_BY_DB_ROLE[user.role] ?? "VIEWER";
+    return {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      name: user.displayName,
+      role,
+      organizationId: user.organizationId,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
   private async issue(user: any) {
     const payload = {
@@ -93,13 +114,7 @@ export class AuthService {
       token: accessToken,
       accessToken,
       refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        displayName: user.displayName,
-        role: user.role,
-        organizationId: user.organizationId,
-      },
+      user: this.toClientUser(user),
     };
   }
 }
