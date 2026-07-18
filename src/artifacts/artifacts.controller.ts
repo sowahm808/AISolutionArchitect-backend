@@ -26,6 +26,56 @@ class PatchArtifactDto {
   @IsOptional() content?: any;
   @IsOptional() status?: string;
 }
+
+const workspaceTypes = [
+  "TARGET_ARCHITECTURE",
+  "C4_CONTAINER_DIAGRAM",
+  "ADR",
+  "TERRAFORM",
+  "KUBERNETES_MANIFEST",
+  "GITHUB_ACTIONS_PIPELINE",
+  "SECURITY_REVIEW",
+  "RISK_ASSESSMENT",
+  "COST_ESTIMATE",
+  "EXECUTIVE_PRESENTATION",
+] as const;
+
+function toDisplayTitle(type: string) {
+  return type
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function toWorkspaceSummary(content: unknown) {
+  if (content == null) return "";
+  if (typeof content === "string") return content;
+  if (typeof content !== "object") return String(content);
+
+  const candidate = content as Record<string, unknown>;
+  if (typeof candidate.markdown === "string") return candidate.markdown;
+  if (typeof candidate.text === "string") return candidate.text;
+  if (typeof candidate.summary === "string") return candidate.summary;
+  if (Array.isArray(candidate.sections)) return candidate.sections.join("\n\n");
+  if (Array.isArray(candidate.slides)) {
+    return candidate.slides
+      .map((slide) => {
+        if (typeof slide === "string") return slide;
+        if (slide && typeof slide === "object") {
+          const item = slide as Record<string, unknown>;
+          return [item.title, item.subtitle, item.notes]
+            .filter(Boolean)
+            .join(" - ");
+        }
+        return String(slide);
+      })
+      .filter(Boolean)
+      .join("\n\n");
+  }
+
+  return JSON.stringify(content, null, 2);
+}
 const map: any = {
   diagrams: "C4_CONTAINER_DIAGRAM",
   adrs: "ADR",
@@ -94,6 +144,44 @@ export class ArtifactsController {
       where: { projectId: id, ...(type ? { type: type as any } : {}) },
       orderBy: { updatedAt: "desc" },
     });
+  }
+
+  @Get("artifacts/workspace") async workspace(
+    @CurrentUser() u: AuthUser,
+    @Param("id") id: string,
+  ) {
+    const model = await this.current(u, id);
+    const artifacts = await this.db.artifact.findMany({
+      where: { projectId: id },
+      orderBy: [{ type: "asc" }, { version: "desc" }],
+    });
+    const latestByType = new Map<string, (typeof artifacts)[number]>();
+    for (const artifact of artifacts) {
+      if (!latestByType.has(artifact.type))
+        latestByType.set(artifact.type, artifact);
+    }
+
+    return {
+      projectId: id,
+      architectureModelId: model.id,
+      architectureModelVersion: model.version,
+      artifacts: workspaceTypes.map((type) => {
+        const artifact = latestByType.get(type);
+        return {
+          id: artifact?.id ?? null,
+          type,
+          title: artifact?.title ?? toDisplayTitle(type),
+          status: artifact?.status ?? "DRAFT",
+          version: artifact?.version ?? 0,
+          format: artifact?.format ?? "json",
+          content: artifact?.content ?? null,
+          workspaceContent: artifact
+            ? toWorkspaceSummary(artifact.content)
+            : `Generate ${toDisplayTitle(type)} to add it to the workspace.`,
+          updatedAt: artifact?.updatedAt ?? null,
+        };
+      }),
+    };
   }
   @Get("artifacts/:artifactId") async one(
     @CurrentUser() u: AuthUser,
